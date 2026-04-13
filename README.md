@@ -1,1 +1,1 @@
-End‑to‑End R pipeline (raw → SDTM → ADaM → TLF dashboard) with Phamaverse packages
+End‑to‑End R Pipeline (Raw → SDTM → ADaM → TLF Dashboard) with Phamaverse Packages
