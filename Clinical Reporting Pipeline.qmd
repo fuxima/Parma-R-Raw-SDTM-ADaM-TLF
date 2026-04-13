@@ -1,0 +1,250 @@
+---
+title: "End‑to‑End Clinical Reporting Pipeline: Raw Data → SDTM → ADaM → TLF"
+author:
+  - name: "Fuxi Ma"
+  - name: "Thomas Leung"
+date: "2026-04-11"
+format:
+  pdf:
+    keep-tex: true
+    toc: true
+    toc-depth: 5
+    number-sections: true
+    documentclass: article
+    papersize: a4
+    geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
+    linestretch: 1.25
+    fontsize: 11pt
+    urlcolor: blue
+    linkcolor: red
+    include-before-body: 
+      \thispagestyle{empty}
+      \tableofcontents
+      \clearpage
+    header-includes:
+      - \usepackage{titling}
+      - \pretitle{\begin{center}\vspace*{2cm}\Huge}
+      - \posttitle{\end{center}\clearpage}
+      - \raggedbottom 
+      - \usepackage{titling}
+      - \pretitle{\begin{center}\vspace*{2cm}\Huge}
+      - \posttitle{\end{center}\clearpage}
+      - \raggedbottom
+      - \widowpenalty=10000
+      - \clubpenalty=10000
+      - \brokenpenalty=10000
+editor: visual
+execute:
+  cache: true
+---
+
+{{< pagebreak >}}
+
+# Work Plan
+
+**Parties:** Fuxi (pharmaverse/admiral/teal experience) & Thomas (R‑Shiny application)  
+**Start Date:** Immediately after April's 3rd week, 2026 meeting  
+**Objective:** Create a reproducible, interactive pipeline using `sdtm.oak` → `admiral` → `teal`, focusing on the DM/VS domain, ADSL, and a TLF dashboard.
+
+---
+
+## Phase 1: Alignment & Infrastructure (Week 1)
+
+| Task | Owner | Deliverable |
+|------|-------|--------------|
+| 1.1 Review corrected `SDTM‑Datasets‑Creation‑with‑SDTM.OAK.pdf` | Both | Shared understanding of DM creation logic |
+| 1.2 Review `ADaM‑Datasets‑Creation‑with‑Admiral.pdf` (ADSL) | Both | Agreed ADSL derivation steps (exposure, disposition, death, flags, codelists) |
+| 1.3 Review `TLF‑R‑Shiny‑Dashboard‑with‑Teal.pdf` | Both | Confirm dashboard modules: DM table, AE table, KM plot |
+| 1.4 Set up shared environment (Git repo, R package versions, data access) | Thomas | GitHub repo + `renv` lock file |
+| 1.5 Identify raw data sources (CDISC SDTM test data, e.g., `pharmaversesdtm`) | Fuxi | Documented input datasets |
+
+---
+
+## Phase 2: SDTM Generation with `sdtm.oak` (Week 2)
+
+| Task | Owner | Deliverable |
+|------|-------|--------------|
+| 2.1 Run the corrected DM domain script on sample raw data | Fuxi | Validated DM dataset (SDTM) |
+| 2.2 Extend to other core domains (e.g., AE, EX, DS) if needed for ADaM | Fuxi | At least AE, EX, DS in SDTM format |
+| 2.3 Write QC checks (e.g., no duplicate USUBJID, expected variables) | Fuxi | QC script |
+| 2.4 Document any deviations from the corrected script | Fuxi | Markdown log |
+
+---
+
+## Phase 3: ADaM Creation with `admiral` (Weeks 3–4)
+
+| Task | Owner | Deliverable |
+|------|-------|--------------|
+| 3.1 Re‑create ADSL following the PDF steps (exposure, disposition, death, flags, codelists) | Fuxi | ADSL dataset (one row per subject) |
+| 3.2 Add derived variables: `RACEGR1`, `AGEGR1`, `REGION1`, `DTHCGR1`, numeric codes | Fuxi | Completed ADSL with all planned variables |
+| 3.3 Generate ADSL metadata (xportr labels, formats) and write `.xpt` | Fuxi | `adsl.xpt` + metadata log |
+| 3.4 (Optional) Create additional ADaM datasets (ADAE, ADTTE) for the dashboard | Both | `adae`, `adtte` (if not already present) |
+
+---
+
+## Phase 4: TLF Dashboard with `teal` (Weeks 5–6)
+
+| Task | Owner | Deliverable |
+|------|-------|--------------|
+| 4.1 Adapt the provided `teal` code to use real ADSL/ADAE/ADTTE | Thomas | Running `teal` app locally |
+| 4.2 Configure pre‑defined filters (`teal_slices`) as in PDF: `SAFFL`, `AESER`, `AERE1`, age, sex | Thomas | Filter panel with anchored slices |
+| 4.3 Customize modules: demographic table, AE table, KM plot (add strata/facets) | Thomas | Fully functional dashboard |
+| 4.4 Add a module to display SDTM/ADaM metadata (variable labels, source) | Thomas | “Data Dictionary” tab |
+
+---
+
+## Phase 5: Integration & End‑to‑End Testing (Week 7)
+
+| Task | Owner | Deliverable |
+|------|-------|--------------|
+| 5.1 Chain the pipeline: raw data → SDTM → ADaM → teal dashboard | Both | Single R script or `targets` workflow |
+| 5.2 Test with a second raw dataset (e.g., a different study) | Both | Validation report |
+| 5.3 Performance check (loading speed, filter responsiveness) | Thomas | Benchmark summary |
+| 5.4 Document known limitations (e.g., date imputation rules, missing value handling) | Fuxi | `README` + code comments |
+
+---
+
+## Phase 6: Final Delivery & Handover (Week 8)
+
+| Task | Owner | Deliverable |
+|------|-------|--------------|
+| 6.1 Prepare a demo for stakeholders (recorded video or live) | Both | 15‑min demo |
+| 6.2 Package pipeline as an R package or Shiny app bundle | Thomas | Deployable artifact (e.g., Docker image) |
+| 6.3 Write user guide for analysts (how to add new study data) | Fuxi | PDF or RMarkdown guide |
+| 6.4 Schedule follow‑up for next features (e.g., additional domains, safety tables) | Both | Roadmap document |
+
+---
+
+## Communication & Meetings
+
+- **Weekly sync:** Every Friday, 1:30 PM PDT (30 min) – progress review, blockers, next steps.
+- **Ad‑hoc:** As needed via email or shared chat (e.g., Slack).
+- **File sharing:** GitHub repository + shared drive for raw data (if not public).
+
+---
+
+## Success Criteria
+
+1. Raw data (SDTM‑like) → DM domain (SDTM) runs without error.
+2. ADSL is created with all variables shown in the PDF, and passes basic CDISC conformance.
+3. `teal` dashboard launches and displays the three modules with pre‑set filters.
+4. A user can select a different raw dataset and re‑run the entire pipeline with minimal changes.
+
+# Complete R Code
+```{r}
+#| eval: false
+#| page-break: false
+
+# Load required package
+library(teal.modules.clinical)
+
+ADSL <- teal.modules.clinical::tmc_ex_adsl
+ADAE <- teal.modules.clinical::tmc_ex_adae
+ADTTE <- teal.modules.clinical::tmc_ex_adtte
+
+app <- init(
+  data = cdisc_data(
+    ADSL = ADSL, ADAE = ADAE, ADTTE = ADTTE,
+    code = "
+      ADSL <- teal.modules.clinical::tmc_ex_adsl
+      ADAE <- teal.modules.clinical::tmc_ex_adae
+      ADTTE <- teal.modules.clinical::tmc_ex_adtte
+    "
+  ),
+  modules = modules(
+    tm_t_summary(
+      label = "Demographic Table",
+      dataname = "ADSL",
+      arm_var = choices_selected(
+        choices = c("ARM", "ARMCD"), selected = "ARM"
+      ),
+      summarize_vars = choices_selected(
+        choices = c("SEX", "RACE", "BMRKR2", "EOSDY", "DCSREAS", "AGE"),
+        selected = c("SEX", "RACE")
+      )
+    ),
+    tm_t_events(
+      label = "AE Table",
+      dataname = "ADAE",
+      arm_var = choices_selected(
+        choices = c("ARM", "ARMCD"), selected = "ARM"
+      ),
+      hlt = choices_selected(
+        choices = variable_choices(ADAE, c("AEBODSYS", "AESOC")),
+        selected = "AEBODSYS"
+      ),
+      llt = choices_selected(
+        choices = variable_choices(ADAE, c("AETERM", "AEDECOD")),
+        selected = "AEDECOD"
+      )
+    ),
+    tm_g_km(
+      label = "KM Plot",
+      dataname = "ADTTE",
+      arm_var = choices_selected(
+        choices = c("ARM", "ARMCD", "ACTARMCD"),
+        selected = "ARM"
+      ),
+      paramcd = choices_selected(
+        choices = value_choices(ADTTE, "PARAMCD", "PARAM"),
+        selected = "OS"
+      ),
+      strata_var = choices_selected(
+        variable_choices(ADSL, c("SEX", "BMRKR2")), NULL
+      ),
+      facet_var = choices_selected(
+        variable_choices(ADSL, c("SEX", "BMRKR2")), NULL
+      ),
+      plot_height = c(600L, 400L, 5000L)
+    )
+  ),
+  header = tags$h1("Clinical Trial R-Shiny App"),
+  footer = tags$div(
+    style = "text-align: center; margin-top: 20px;
+             padding: 10px; background-color: #f5f5f5;
+             font-size: 12px;",
+    "Fuxi Ma", "Built with Pharmaverse teal package"
+  ),
+  filter = teal_slices(
+    teal_slice("ADSL", "SAFFL", id = "saffl",
+               selected = "Y", fixed = TRUE, anchored = TRUE),
+    teal_slice("ADAE", "AESER", anchored = TRUE),
+    teal_slice("ADAE", id = "aerel",
+               expr = "AEREL == 'Y' & AETOXGR %in% c('3', '4', '5')",
+               title = "Grade 3+ Related Events"),
+    teal_slice("ADSL", "SEX", id = "sex", fixed = TRUE),
+    teal_slice("ADSL", id = "age",
+               expr = "AGE >= 18 & AGE <= 30", title = "Young Adult"),
+    module_specific = TRUE,
+    mapping = list(
+      "Demographic Table" = c("saffl"),
+      "AE Table" = c("saffl", "aerel"),
+      global_filters = c("sex", "age")
+    ),
+    count_type = "all"
+  )
+)
+
+shinyApp(app$ui, app$server)
+
+
+```
+
+# Dashboard Snapshorts
+
+## DM Table
+```{r, echo=FALSE, out.width='100%'}
+knitr::include_graphics("dm.png")
+```
+
+## AE Table
+
+```{r, echo=FALSE, fig.pos='h!', out.width='100%'}
+knitr::include_graphics("AE.png")
+```
+
+## Kaplan-Meier Plot
+
+```{r, echo=FALSE, fig.pos='h!', out.width='100%'}
+knitr::include_graphics('km_plot.png')
+```

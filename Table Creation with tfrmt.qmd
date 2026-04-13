@@ -1,0 +1,355 @@
+---
+title: "Summary of tfrmt Table Construction in R"
+author:
+  - name: "Fuxi Ma"
+    email: fuxi.ma@outlook.com
+date: "2026-04-12"
+format:
+  pdf:
+    keep-tex: true
+    toc: true
+    toc-depth: 5
+    number-sections: true
+    documentclass: article
+    papersize: a4
+    geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
+    linestretch: 1.25
+    fontsize: 11pt
+    urlcolor: blue
+    linkcolor: red
+    include-before-body: 
+      \thispagestyle{empty}
+      \tableofcontents
+      \clearpage
+    header-includes:
+      - \usepackage{titling}
+      - \pretitle{\begin{center}\vspace*{2cm}\Huge}
+      - \posttitle{\end{center}\clearpage}
+      - \raggedbottom 
+      - \usepackage{titling}
+      - \pretitle{\begin{center}\vspace*{2cm}\Huge}
+      - \posttitle{\end{center}\clearpage}
+      - \raggedbottom
+      - \widowpenalty=10000
+      - \clubpenalty=10000
+      - \brokenpenalty=10000
+editor: visual
+execute:
+  cache: true
+---
+
+{{< pagebreak >}}
+
+
+## Overview
+
+The following R code demonstrates how to build a publication‑ready table using the **`tfrmt`** package. It starts with a manually created dataset, progressively adds formatting, ordering, and styling, and finally shows how to reuse a template.
+
+## Step‑by‑Step Summary
+
+### 1. Data Preparation
+- A `tibble` called `data` is created with columns `Group`, `Label`, `Column`, `Param`, and `Value`.
+- It contains summary statistics (n, mean, SD, percentages) for two groups ("Age (y)" and "Sex") across three columns ("Placebo", "Treatment", "Total").
+- Percentages are multiplied by 100 because `tfrmt` rounds but does not automatically format as percentages.
+- Two ordering columns (`ord1`, `ord2`) are added to control row order.
+
+### 2. Basic `tfrmt` Definition
+- A minimal `tfrmt` object specifies `group`, `label`, `column`, `param`, and `value`.
+- `print_to_gt()` renders the table as a `gt` object.
+
+### 3. Adding a `body_plan` (Cell Formatting)
+- A `body_plan` uses `frmt_structure` rules:
+  - Default rule: combine `n` and `pct` as `"{n} ({pct}%)"`.
+  - Separate rule for rows with `Label = "n"` to display only `n` as `"XX"`.
+  - Separate rule for `Group = "Age (y)"` and `Label = "Mean (SD)"` to combine `mean` and `sd` as `"{mean} ({sd})"`.
+
+### 4. Adding a `col_plan` and Sorting
+- Layered arguments:
+  - `sorting_cols = c("ord1", "ord2")` to order rows.
+  - `col_plan = col_plan(-starts_with("ord"))` to drop helper columns.
+
+### 5. Adding a `row_grp_plan` (Row Group Spacing)
+- A `row_grp_plan` adds blank lines after each row group with `post_space`.
+
+### 6. Complete Final `tfrmt`
+- All components are combined into a single `tfrmt` call that produces the final table.
+
+### 7. Using a Template (`tfrmt_n_pct()`)
+- The code shows how to start from a predefined template and layer custom overrides to avoid repetition.
+
+## Complete R Code
+
+```r
+library(tibble)
+library(tfrmt)
+library(dplyr)
+
+# Create dataset
+data <- tibble(Group = rep(c("Age (y)", "Sex", "Age (y)", "Sex"), c(3, 3, 6,12)),
+               Label = rep(c("n", "Mean (SD)", "Male","Female"), c(6, 6,6,6)),
+               Column = rep(c("Placebo", "Treatment", "Total"), times = 8),
+               Param = rep(c("n", "mean", "sd", "n", "pct", "n", "pct"),  c(6, 3, 3, 3,3,3,3)),
+               Value = c(15,13,28,14,13,27,73.56, 74.231,71.84,9.347,7.234,8.293,8,7,15,8/14,7/13,15/27,6,6,12,6/14,6/13,12/27)) %>% 
+  mutate(Value = case_when(Param == "pct" ~ Value * 100, TRUE ~ Value), 
+         ord1 = if_else(Group == "Age (y)", 1, 2),
+         ord2 = if_else(Label == "n", 1, 2))
+
+# Basic tfrmt
+first_tfrmt <- tfrmt(
+  group = Group, label = Label, column = Column, param = Param, value = Value
+)
+first_tfrmt %>% print_to_gt(data)
+
+# Add body_plan
+tfrmt(
+  group = Group, label = Label, column = Column, param = Param, value = Value,
+  body_plan = body_plan(
+    frmt_structure(group_val = ".default", label_val = ".default", 
+                   frmt_combine("{n} ({pct}%)", n = frmt("XX"), pct = frmt("x.x")))
+  )
+) %>% print_to_gt(data)
+
+# More complete body_plan
+rounded_tfrmt <- tfrmt(
+  group = Group, label = Label, column = Column, param = Param, value = Value,
+  body_plan = body_plan(
+    frmt_structure(group_val = ".default", label_val = ".default", 
+                   frmt_combine("{n} ({pct}%)", n = frmt("XX"), pct = frmt("xx.x"))),
+    frmt_structure(group_val = ".default", label_val = "n", frmt("XX")),
+    frmt_structure(group_val = "Age (y)", label_val = "Mean (SD)",
+                   frmt_combine("{mean} ({sd})", mean = frmt("xx.x"), sd = frmt("x.xx")))
+  )
+)
+rounded_tfrmt %>% print_to_gt(data)
+
+# Add sorting and col_plan
+ordered_tfrmt <- rounded_tfrmt %>% 
+  tfrmt(sorting_cols = c(ord1, ord2), col_plan = col_plan(-starts_with("ord")))
+ordered_tfrmt %>% print_to_gt(data)
+
+# Add row_grp_plan
+added_space <- ordered_tfrmt %>% 
+  tfrmt(row_grp_plan = row_grp_plan(row_grp_structure(group_val = ".default", element_block(post_space = "  "))))
+added_space %>% print_to_gt(data)
+
+# Final complete tfrmt
+tfrmt(
+  group = Group, label = Label, column = Column, value = Value, param = Param, 
+  sorting_cols = c(ord1, ord2),
+  body_plan = body_plan(
+    frmt_structure(group_val = ".default", label_val = ".default",
+                   frmt_combine("{n} ({pct})", n = frmt("X"), pct = frmt("xx.x"))),
+    frmt_structure(group_val = ".default", label_val = "n", frmt("XX")),
+    frmt_structure(group_val = "Age (y)", label_val = "Mean (SD)", 
+                   frmt_combine("{mean} ({sd})", mean = frmt("XX.X"), sd = frmt("x.xx")))
+  ),
+  col_plan = col_plan(-starts_with("ord")),
+  row_grp_plan = row_grp_plan(row_grp_structure(group_val = ".default", element_block(post_space = " ")))
+) %>% print_to_gt(data)
+
+# Using a template
+tfrmt_n_pct() %>%
+  tfrmt(group = Group, label = Label, column = Column, value = Value, param = Param, 
+        sorting_cols = c(ord1, ord2),
+        body_plan = body_plan(
+          frmt_structure(group_val = ".default", label_val = "n", frmt("X")),
+          frmt_structure(group_val = "Age (y)", label_val = "Mean (SD)", 
+                         frmt_combine("{mean} ({sd})", mean = frmt("XX.X"), sd = frmt("x.xx")))
+        ),
+        col_plan = col_plan(-starts_with("ord")),
+        row_grp_plan = row_grp_plan(row_grp_structure(group_val = ".default", element_block(post_space = " ")))
+  ) %>%
+  print_to_gt(data)
+
+# Complete R Code
+
+```{r}
+#| page-break: false
+
+library(tibble)
+library(tfrmt)
+library(dplyr)
+
+# Here we will make our first table using tfrmt 
+
+# Create the dataset that matches the slides
+data <- tibble(Group = rep(c("Age (y)", "Sex", "Age (y)", "Sex"), c(3, 3, 6,12)),
+               Label = rep(c("n", "Mean (SD)", "Male","Female"), c(6, 6,6,6)),
+               Column = rep(c("Placebo", "Treatment", "Total"), times = 8),
+               Param = rep(c("n", "mean", "sd", "n", "pct", "n", "pct"),  c(6, 3, 3, 3,3,3,3)),
+               Value = c(15,13,28,14,13,27,73.56, 74.231,71.84,9.347,7.234,8.293,8,7,15,8/14,7/13,15/27,6,6,12,6/14,6/13,12/27
+               )
+) %>% 
+  # Note because tfrmt only does rounding we will need to have the percents multiplied by 100 
+  mutate(Value = case_when(Param == "pct" ~ Value * 100,
+                           TRUE ~ Value), 
+         ord1 = if_else(Group == "Age (y)", 1, 2),
+         ord2 = if_else(Label == "n", 1, 2)) 
+data
+
+
+# set columns in tfrmt ----------------------------------------------------
+
+first_tfrmt <- tfrmt(
+  group = Group,
+  label = Label, 
+  column = Column, 
+  param = Param, 
+  value = Value
+)
+
+# now print this out ------------------------------------------------------
+first_tfrmt %>% 
+  print_to_gt(data)
+
+
+
+# add body_plan ------------------------------------------------------------
+
+tfrmt(
+  group = Group,
+  label = Label, 
+  column = Column, 
+  param = Param, 
+  value = Value,
+  body_plan = body_plan(
+    frmt_structure(group_val = ".default", label_val = ".default", 
+                   frmt_combine("{n} ({pct}%)",
+                                n = frmt("XX"),
+                                pct = frmt("x.x"))
+    )
+  )
+) %>% 
+  print_to_gt(data)
+
+# Notice that some of the ns don't have percents with them so those show up as
+# missing. Also, the means and sds don't have any formatting applied to them.
+# So, lets add some more formatting.
+
+rounded_tfrmt <- tfrmt(
+  group = Group,
+  label = Label, 
+  column = Column, 
+  param = Param, 
+  value = Value,
+  body_plan = body_plan(
+    frmt_structure(group_val = ".default", label_val = ".default", 
+                   frmt_combine("{n} ({pct}%)",
+                                n = frmt("XX"),
+                                pct = frmt("xx.x"))),
+    frmt_structure(group_val = ".default", label_val = "n",
+                   frmt("XX")),
+    frmt_structure(group_val = "Age (y)", label_val = "Mean (SD)",
+                   frmt_combine("{mean} ({sd})",
+                                mean = frmt("xx.x"),
+                                sd = frmt("x.xx")))
+  )
+) 
+
+rounded_tfrmt %>% 
+  print_to_gt(data)
+
+
+
+# add col_plan ------------------------------------------------------------
+
+# It looks better, but now the rows are out of order and we would like to get
+# rid of those order columns. By this point, we have done lots of typing. I
+# don't really want to write all that again. So we are going to layer.
+
+# this orders the rows 
+rounded_tfrmt %>% 
+  tfrmt(
+    sorting_cols = c(ord1, ord2),
+  ) %>% 
+  print_to_gt(data)
+
+# add in the col plan 
+ordered_tfrmt <- rounded_tfrmt %>% 
+  tfrmt(
+    sorting_cols = c(ord1, ord2),
+    col_plan = col_plan(-starts_with("ord"))
+  ) 
+
+ordered_tfrmt %>% 
+  print_to_gt(data)
+
+# add row_grp_plan -------------------------------------------------------
+
+
+# Looking even better!! The last thing we will do is add some formatting of the
+# row groups and their labels.
+
+# Indent nested row labels and add a space after groups of rows
+added_space <- ordered_tfrmt %>% 
+  tfrmt(row_grp_plan = 
+          row_grp_plan(
+            row_grp_structure(group_val = ".default", element_block(post_space = "  "))
+          )
+  ) 
+
+added_space %>% 
+  print_to_gt(data)
+
+
+# Here is the full tfrmt  -------------------------------------------------
+
+tfrmt(
+  group = Group,
+  label = Label,
+  column = Column,
+  value = Value,
+  param = Param, 
+  sorting_cols = c(ord1, ord2),
+  body_plan = body_plan(
+    frmt_structure(group_val = ".default", 
+                   label_val = ".default",
+                   frmt_combine("{n} ({pct})",
+                                n = frmt("X"),
+                                pct = frmt("xx.x")
+                   )
+    ),
+    frmt_structure(group_val = ".default", label_val = "n", frmt("XX")),
+    frmt_structure(group_val = "Age (y)", label_val = "Mean (SD)", 
+                   frmt_combine("{mean} ({sd})", 
+                                mean = frmt("XX.X"),
+                                sd = frmt("x.xx")
+                   )
+    )
+  ),
+  col_plan = col_plan(-starts_with("ord")),
+  row_grp_plan = row_grp_plan(
+    row_grp_structure(group_val = ".default", element_block(post_space = " "))
+  )
+) %>% 
+  print_to_gt(data)
+
+
+# templates ---------------------------------------------------------------
+
+# One of the great things about layering is that you can make templates to be
+# reused for lots of tables. 
+tfrmt_n_pct() %>%
+  tfrmt(group = Group,
+        label = Label,
+        column = Column,
+        value = Value,
+        param = Param, 
+        sorting_cols = c(ord1, ord2),
+        body_plan = body_plan(
+          frmt_structure(group_val = ".default", label_val = "n", frmt("X")),
+          frmt_structure(group_val = "Age (y)", label_val = "Mean (SD)", 
+                         frmt_combine("{mean} ({sd})",   
+                                      mean = frmt("XX.X"),
+                                      sd = frmt("x.xx")
+                         )
+          )
+        ),
+        col_plan = col_plan(-starts_with("ord")),
+        row_grp_plan = row_grp_plan(
+          row_grp_structure(group_val = ".default", element_block(post_space = " "))
+        )
+  ) %>%
+  print_to_gt(data)
+
+```
